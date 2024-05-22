@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chatbot</title>
+    <script>
+        function sendMessage() {
+            const userMessage = document.getElementById("message").value;
+            if (!userMessage) return;
+
+            fetch("/get_response", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ message: userMessage })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    const chatBox = document.getElementById("chat-box");
+                    chatBox.innerHTML += `<div>User: ${userMessage}</div>`;
+                    chatBox.innerHTML += `<div>Bot: ${data.response}</div>`;
+                }
+            })
+            .catch(error => console.error("Error:", error));
+        }
+    </script>
+</head>
+<body>
+    <div id="chat-box" style="border:1px solid #ccc; padding:10px; width:300px; height:300px; overflow-y:auto;">
+        <!-- Chat messages will appear here -->
+    </div>
+    <input type="text" id="message" placeholder="Type your message">
+    <button onclick="sendMessage()">Send</button>
+</body>
+</html>
