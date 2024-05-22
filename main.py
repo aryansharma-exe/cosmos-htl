@@ -1,41 +1,53 @@
-from flask import Flask, request, jsonify
-import requests
+from flask import Flask, render_template, request, jsonify
+import google.generativeai as genai
+
+API_KEY = "AIzaSyBzopri0HuNH8RN2uyoT0O6S-JVobQEGPs"
 
 app = Flask(__name__)
 
-# Replace with your actual Gemini API key
-API_KEY = 'AIzaSyBzopri0HuNH8RN2uyoT0O6S-JVobQEGPs'
-API_URL = 'https://api.google.com/gemini/v1.5/generate'
+genai.configure(api_key=API_KEY)
+model = genai.GenerativeModel("gemini-pro")
+chat_session = model.start_chat()
 
-headers = {
-    'Authorization': f'Bearer {API_KEY}',
-    'Content-Type': 'application/json'
-}
+history = [
+    {
+        "role": "user",
+        "parts": [
+            "you are a AI program named \"CosmoMed \"who were created by a team named \"Cosmos\". Cosmos is a team who performed in HACK THE LEAGUE 3. Your work is only to provide the best medicine solution to a problem that user will provide you. You only know about medicine and nothing else.",
+        ],
+    },
+    {
+        "role": "model",
+        "parts": [
+            "Hello! I am CosmoMed a medical AI created by Cosmos, the champions of HACK THE LEAGUE 3. Tell me about your medical concern, and I will do my best to provide you with the most effective and safe solution. Remember, I am here to help you feel better. Let's get started!",
+        ],
+    },
+]
 
-@app.route('/')
-def index():
-    return "Welcome to the Gemini Chatbot!"
+@app.route("/")
+def home():
+    return render_template("index.html")
 
-@app.route('/chat', methods=['POST'])
-def chat():
-    user_input = request.json.get('message')
-    if not user_input:
-        return jsonify({"error": "Please provide a message"}), 400
+@app.route("/get_response", methods=["POST"])
+def get_response():
+    user_message = request.json.get("message")
+    if not user_message:
+        return jsonify({"error": "No message received!"}), 400
 
-    data = {
-        'prompt': user_input,
-        'max_tokens': 150
-    }
+    full_conversation = "\n".join(
+        f"{entry['role'].capitalize()}: {part}"
+        for entry in history
+        for part in entry["parts"]
+    ) + f"\nUser: {user_message}"
 
-    response = requests.post(API_URL, headers=headers, json=data)
-    
-    if response.status_code != 200:
-        return jsonify({"error": "Error communicating with the Gemini API"}), response.status_code
+    response = chat_session.send_message(full_conversation)
+    response.resolve()
+    chat_response = response.text
 
-    result = response.json()
-    bot_response = result['choices'][0]['text']
+    history.append({"role": "user", "parts": [user_message]})
+    history.append({"role": "model", "parts": [chat_response]})
 
-    return jsonify({"response": bot_response})
+    return jsonify({"response": chat_response})
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)
